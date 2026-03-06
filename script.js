@@ -18,6 +18,20 @@ class Paper {
     this.currentPaperY = 0;
     this.rotating = false;
     this.isMobile = /Mobi|Android/i.test(navigator.userAgent);
+    this.scale = 1; // Untuk zoom
+    this.previousDistance = 0; // Untuk mendeteksi pinch
+  }
+
+  // Hitung jarak antar dua jari untuk pinch zoom
+  getDistance(touches) {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  // Update transform dengan rotation dan scale
+  updateTransform(paper) {
+    paper.style.transform = `translateX(${this.currentPaperX}px) translateY(${this.currentPaperY}px) rotateZ(${this.rotation}deg) scale(${this.scale})`;
   }
 
   init(paper) {
@@ -27,45 +41,51 @@ class Paper {
         if(this.holdingPaper) return;
         this.holdingPaper = true;
         paper.style.zIndex = highestZ++;
-        this.startX = e.touches[0].clientX;
-        this.startY = e.touches[0].clientY;
-        this.prevX = this.startX;
-        this.prevY = this.startY;
+        
+        // Jika dua jari, mulai pinch zoom
+        if(e.touches.length === 2) {
+          this.previousDistance = this.getDistance(e.touches);
+          this.rotating = true; // Gunakan rotating flag untuk pinch mode
+        } else {
+          this.startX = e.touches[0].clientX;
+          this.startY = e.touches[0].clientY;
+          this.prevX = this.startX;
+          this.prevY = this.startY;
+        }
       }, {passive: false});
 
       paper.addEventListener('touchmove', (e) => {
         e.preventDefault();
-        if(!this.rotating) {
+        
+        // Pinch zoom dengan dua jari
+        if(e.touches.length === 2) {
+          const currentDistance = this.getDistance(e.touches);
+          const scaleChange = currentDistance / this.previousDistance;
+          this.scale = Math.max(0.5, Math.min(3, this.scale * scaleChange));
+          this.previousDistance = currentDistance;
+          this.updateTransform(paper);
+        } 
+        // Dragging dengan satu jari
+        else if(e.touches.length === 1 && !this.rotating) {
           this.moveX = e.touches[0].clientX;
           this.moveY = e.touches[0].clientY;
           this.velX = this.moveX - this.prevX;
           this.velY = this.moveY - this.prevY;
-        }
-        const dirX = e.touches[0].clientX - this.startX;
-        const dirY = e.touches[0].clientY - this.startY;
-        const dirLength = Math.sqrt(dirX*dirX+dirY*dirY);
-        const dirNormalizedX = dirX / dirLength;
-        const dirNormalizedY = dirY / dirLength;
-        const angle = Math.atan2(dirNormalizedY, dirNormalizedX);
-        let degrees = 180 * angle / Math.PI;
-        degrees = (360 + Math.round(degrees)) % 360;
-        if(this.rotating) {
-          this.rotation = degrees;
-        }
-        if(this.holdingPaper) {
-          if(!this.rotating) {
+          
+          if(this.holdingPaper) {
             this.currentPaperX += this.velX;
             this.currentPaperY += this.velY;
+            this.prevX = this.moveX;
+            this.prevY = this.moveY;
+            this.updateTransform(paper);
           }
-          this.prevX = this.moveX;
-          this.prevY = this.moveY;
-          paper.style.transform = `translateX(${this.currentPaperX}px) translateY(${this.currentPaperY}px) rotateZ(${this.rotation}deg)`;
         }
       }, {passive: false});
 
       paper.addEventListener('touchend', () => {
         this.holdingPaper = false;
         this.rotating = false;
+        this.previousDistance = 0;
       });
 
       // Optional: gesture events for rotation (not supported on all browsers)
@@ -112,7 +132,7 @@ document.addEventListener('mousemove', (e) => {
     }
     activeInstance.prevX = activeInstance.moveX;
     activeInstance.prevY = activeInstance.moveY;
-    activePaper.style.transform = `translateX(${activeInstance.currentPaperX}px) translateY(${activeInstance.currentPaperY}px) rotateZ(${activeInstance.rotation}deg)`;
+    activePaper.style.transform = `translateX(${activeInstance.currentPaperX}px) translateY(${activeInstance.currentPaperY}px) rotateZ(${activeInstance.rotation}deg) scale(${activeInstance.scale})`;
   }
   // Rotasi dengan klik kanan
   if (activeInstance && activeInstance.rotating && activeInstance.holdingPaper) {
@@ -125,7 +145,7 @@ document.addEventListener('mousemove', (e) => {
     let degrees = 180 * angle / Math.PI;
     degrees = (360 + Math.round(degrees)) % 360;
     activeInstance.rotation = degrees;
-    activePaper.style.transform = `translateX(${activeInstance.currentPaperX}px) translateY(${activeInstance.currentPaperY}px) rotateZ(${activeInstance.rotation}deg)`;
+    activePaper.style.transform = `translateX(${activeInstance.currentPaperX}px) translateY(${activeInstance.currentPaperY}px) rotateZ(${activeInstance.rotation}deg) scale(${activeInstance.scale})`;
   }
 });
 
