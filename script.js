@@ -20,6 +20,7 @@ class Paper {
     this.isMobile = /Mobi|Android/i.test(navigator.userAgent);
     this.scale = 1; // Untuk zoom
     this.previousDistance = 0; // Untuk mendeteksi pinch
+    this.previousAngle = 0; // Untuk mendeteksi rotasi dua jari
   }
 
   // Hitung jarak antar dua jari untuk pinch zoom
@@ -27,6 +28,13 @@ class Paper {
     const dx = touches[0].clientX - touches[1].clientX;
     const dy = touches[0].clientY - touches[1].clientY;
     return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  // Hitung sudut rotasi dari dua jari
+  getRotationAngle(touches) {
+    const dx = touches[1].clientX - touches[0].clientX;
+    const dy = touches[1].clientY - touches[0].clientY;
+    return Math.atan2(dy, dx) * (180 / Math.PI);
   }
 
   // Update transform dengan rotation dan scale
@@ -42,10 +50,11 @@ class Paper {
         this.holdingPaper = true;
         paper.style.zIndex = highestZ++;
         
-        // Jika dua jari, mulai pinch zoom
+        // Jika dua jari, siapkan untuk zoom dan rotate
         if(e.touches.length === 2) {
           this.previousDistance = this.getDistance(e.touches);
-          this.rotating = true; // Gunakan rotating flag untuk pinch mode
+          this.previousAngle = this.getRotationAngle(e.touches);
+          this.rotating = true;
         } else {
           this.startX = e.touches[0].clientX;
           this.startY = e.touches[0].clientY;
@@ -57,12 +66,25 @@ class Paper {
       paper.addEventListener('touchmove', (e) => {
         e.preventDefault();
         
-        // Pinch zoom dengan dua jari
-        if(e.touches.length === 2) {
+        // Zoom dan rotate dengan dua jari (keduanya bisa terjadi)
+        if(e.touches.length === 2 && this.rotating) {
+          // Handle zoom (pinch)
           const currentDistance = this.getDistance(e.touches);
-          const scaleChange = currentDistance / this.previousDistance;
-          this.scale = Math.max(0.5, Math.min(3, this.scale * scaleChange));
-          this.previousDistance = currentDistance;
+          const distanceDelta = Math.abs(currentDistance - this.previousDistance);
+          if (distanceDelta > 2) { // Threshold untuk detect zoom
+            const scaleChange = currentDistance / this.previousDistance;
+            this.scale = Math.max(0.5, Math.min(3, this.scale * scaleChange));
+            this.previousDistance = currentDistance;
+          }
+          
+          // Handle rotate
+          const currentAngle = this.getRotationAngle(e.touches);
+          const angleDiff = currentAngle - this.previousAngle;
+          if (Math.abs(angleDiff) > 0.5) { // Threshold untuk detect rotation
+            this.rotation += angleDiff;
+            this.previousAngle = currentAngle;
+          }
+          
           this.updateTransform(paper);
         } 
         // Dragging dengan satu jari
@@ -86,15 +108,7 @@ class Paper {
         this.holdingPaper = false;
         this.rotating = false;
         this.previousDistance = 0;
-      });
-
-      // Optional: gesture events for rotation (not supported on all browsers)
-      paper.addEventListener('gesturestart', (e) => {
-        e.preventDefault();
-        this.rotating = true;
-      });
-      paper.addEventListener('gestureend', () => {
-        this.rotating = false;
+        this.previousAngle = 0;
       });
 
     } else {
