@@ -110,7 +110,11 @@ class Paper {
           this.prevX = this.startX;
           this.prevY = this.startY;
         } else if (e.button === 2) { // right click
+          activePaper = paper;
+          activeInstance = this;
           this.rotating = true;
+          this.startX = e.clientX;
+          this.startY = e.clientY;
         }
       });
 
@@ -152,9 +156,7 @@ document.addEventListener('mousemove', (e) => {
 document.addEventListener('mouseup', (e) => {
   if (activeInstance) {
     activeInstance.holdingPaper = false;
-    if (e.button === 2) {
-      activeInstance.rotating = false;
-    }
+    activeInstance.rotating = false; // Reset rotating flag saat mouse release
     activePaper = null;
     activeInstance = null;
   }
