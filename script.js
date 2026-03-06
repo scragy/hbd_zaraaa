@@ -46,21 +46,24 @@ class Paper {
     if (this.isMobile) {
       // Touch events for mobile
       paper.addEventListener('touchstart', (e) => {
+        // Deteksi 2 jari dulu, baru check holdingPaper
+        if(e.touches.length === 2) {
+          this.holdingPaper = true;
+          this.previousDistance = this.getDistance(e.touches);
+          this.previousAngle = this.getRotationAngle(e.touches);
+          this.rotating = true;  // ← SET 2-JARI MODE!
+          return;
+        }
+        
+        // Jika hanya 1 jari dan sudah holding, skip
         if(this.holdingPaper) return;
         this.holdingPaper = true;
         paper.style.zIndex = highestZ++;
         
-        // Jika dua jari, siapkan untuk zoom dan rotate
-        if(e.touches.length === 2) {
-          this.previousDistance = this.getDistance(e.touches);
-          this.previousAngle = this.getRotationAngle(e.touches);
-          this.rotating = true;
-        } else {
-          this.startX = e.touches[0].clientX;
-          this.startY = e.touches[0].clientY;
-          this.prevX = this.startX;
-          this.prevY = this.startY;
-        }
+        this.startX = e.touches[0].clientX;
+        this.startY = e.touches[0].clientY;
+        this.prevX = this.startX;
+        this.prevY = this.startY;
       }, {passive: false});
 
       paper.addEventListener('touchmove', (e) => {
@@ -71,7 +74,7 @@ class Paper {
           // Handle zoom (pinch)
           const currentDistance = this.getDistance(e.touches);
           const distanceDelta = Math.abs(currentDistance - this.previousDistance);
-          if (distanceDelta > 0.5) { // Threshold untuk detect zoom
+          if (distanceDelta > 0.1) { // Threshold untuk detect zoom
             const scaleChange = currentDistance / this.previousDistance;
             this.scale = Math.max(0.5, Math.min(3, this.scale * scaleChange));
             this.previousDistance = currentDistance;
