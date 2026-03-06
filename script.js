@@ -71,7 +71,7 @@ class Paper {
           // Handle zoom (pinch)
           const currentDistance = this.getDistance(e.touches);
           const distanceDelta = Math.abs(currentDistance - this.previousDistance);
-          if (distanceDelta > 2) { // Threshold untuk detect zoom
+          if (distanceDelta > 0.5) { // Threshold untuk detect zoom
             const scaleChange = currentDistance / this.previousDistance;
             this.scale = Math.max(0.5, Math.min(3, this.scale * scaleChange));
             this.previousDistance = currentDistance;
@@ -80,7 +80,7 @@ class Paper {
           // Handle rotate
           const currentAngle = this.getRotationAngle(e.touches);
           const angleDiff = currentAngle - this.previousAngle;
-          if (Math.abs(angleDiff) > 0.5) { // Threshold untuk detect rotation
+          if (Math.abs(angleDiff) > 0.3) { // Threshold untuk detect rotation
             this.rotation += angleDiff;
             this.previousAngle = currentAngle;
           }
